@@ -141,7 +141,7 @@ def cart():
     end_effector_link = arm.get_end_effector_link()
 
     # Set the reference frame for pose targets
-    reference_frame = "/base_link"
+    reference_frame = "base_link"
 
     # Set the ur5_arm reference frame accordingly
     arm.set_pose_reference_frame(reference_frame)
