@@ -44,9 +44,11 @@ class ur5_mp:
         self.cxy_sub = rospy.Subscriber('cxy', Tracker, self.tracking_callback, queue_size=1)
         self.cxy_pub = rospy.Publisher('cxy1', Tracker, queue_size=1)
         self.phase = 1
-        self.object_cnt = 0
+        self.red_cnt = 0
+        self.green_cnt = 0
         self.track_flag = False
         self.default_pose_flag = True
+        self.red_flag = True
         self.cx = 400.0
         self.cy = 400.0
         self.points=[]
@@ -113,7 +115,7 @@ class ur5_mp:
 
         if np.sqrt((wpose.position.x-start_pose.position.x)**2+(wpose.position.x-start_pose.position.x)**2 \
             +(wpose.position.x-start_pose.position.x)**2)<0.1:
-            rospy.loginfo("Warnig: target position overlaps with the initial position!")
+            rospy.loginfo("Warning: target position overlaps with the initial position!")
 
         # self.arm.set_pose_target(wpose)
 
@@ -160,6 +162,7 @@ class ur5_mp:
     def tracking_callback(self, msg):
 
         self.track_flag = msg.flag1
+        self.red_flag = msg.flag3
         self.cx = msg.x
         self.cy = msg.y
         self.error_x = msg.error_x
@@ -231,9 +234,15 @@ class ur5_mp:
                         self.arm.set_max_acceleration_scaling_factor(.15)
                         self.arm.set_max_velocity_scaling_factor(.25)
 
+                        if self.red_flag:
+                            self.transition_pose[0] = -3.65
+                            self.end_joint_states[0] = -3.65
 
-
+                        else:
+                            self.transition_pose[0] = 0.16
+                            self.end_joint_states[0] = 0.16
                         self.arm.set_joint_value_target(self.transition_pose)
+
                         self.arm.set_start_state_to_current_state()
                         plan = self.arm.plan()
                         self.arm.execute(plan)
@@ -243,14 +252,19 @@ class ur5_mp:
                         plan = self.arm.plan()
                         self.arm.execute(plan)
 
-                        if -0.1+0.02*self.object_cnt<0.2:
-                            self.object_cnt += 1
+                        if self.red_flag and -0.1+0.02*self.red_cnt<0.2:
+                            self.red_cnt += 1
+                        elif -0.1+0.02*self.green_cnt<0.2:
+                            self.green_cnt += 1
 
                         self.waypoints = []
                         start_pose = self.arm.get_current_pose(self.end_effector_link).pose
                         transition_pose = deepcopy(start_pose)
                         transition_pose.position.x -= 0.1
-                        transition_pose.position.z = -0.1 + self.object_cnt*0.025
+                        if self.red_flag:
+                            transition_pose.position.z = -0.1 + self.red_cnt*0.025
+                        else:
+                            transition_pose.position.z = -0.1 + self.green_cnt*0.025
                         self.waypoints.append(deepcopy(transition_pose))
 
                         self.arm.set_start_state_to_current_state()

@@ -7,6 +7,8 @@
   // get urdf file path of blocks from parameter servicer
   //publish all current blocks through topic: /current_blocks
 
+  #include <time.h>
+  #include <stdlib.h>
   #include <ros/ros.h>
   #include <iostream>
   #include <sstream>
@@ -26,6 +28,8 @@
   }
 
   int main(int argc, char **argv) {
+      srand(time(NULL));
+
       ros::init(argc, argv, "blocks_spawner");
       ros::NodeHandle nh;
       srand(time(0));
@@ -74,21 +78,35 @@
 
       //get file path of blocks from parameter service
       std::string red_box_path;
+      std::string green_box_path;
       bool get_red_path;
+      bool get_green_path;
       get_red_path = nh.getParam("/red_box_path", red_box_path);
+      get_green_path = nh.getParam("/green_box_path", green_box_path);
 
       if (!(get_red_path)){
           return 0;}
           else{ROS_INFO_STREAM(red_box_path << " has been extracted");
+}
+      if (!(get_green_path)){
+          return 0;}
+          else{ROS_INFO_STREAM(green_box_path << " has been extracted");
 }
 
       std::ifstream red_inXml(red_box_path.c_str());
       std::stringstream red_strStream;
       std::string red_xmlStr;
 
+      std::ifstream green_inXml(green_box_path.c_str());
+      std::stringstream green_strStream;
+      std::string green_xmlStr;
+
       /*red_inXml.open(red_box_path.c_str());*/
       red_strStream << red_inXml.rdbuf();
       red_xmlStr = red_strStream.str();
+
+      green_strStream << green_inXml.rdbuf();
+      green_xmlStr = green_strStream.str();
      // ROS_INFO_STREAM("urdf: \n" <<red_xmlStr);
       // prepare the pawn model service message
       spawn_model_req.initial_pose.position.x = 2;
@@ -118,10 +136,19 @@
           ROS_INFO_STREAM("y position of new box: "
           << spawn_model_req.initial_pose.position.y);
 
-          model_name = "red_blocks_" + index;  // initialize model_name
-          spawn_model_req.model_name = model_name;
-          spawn_model_req.robot_namespace = model_name;
-          spawn_model_req.model_xml = red_xmlStr;
+          int isRed = rand() % 2;
+
+          if (isRed) {
+            model_name = "red_blocks_" + index;  // initialize model_name
+            spawn_model_req.model_name = model_name;
+            spawn_model_req.robot_namespace = model_name;
+            spawn_model_req.model_xml = red_xmlStr;
+          } else {
+            model_name = "green_blocks_" + index;  // initialize model_name
+            spawn_model_req.model_name = model_name;
+            spawn_model_req.robot_namespace = model_name;
+            spawn_model_req.model_xml = green_xmlStr;
+          }
 
           bool call_service = spawnClient.call(spawn_model_req, spawn_model_resp);
           if (call_service) {
